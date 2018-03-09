@@ -125,29 +125,23 @@ export default {
       position: relative;
       .mark {
         position: absolute;
-        bottom: 10%;
+        bottom: 20%;
         margin: 0 auto;
         width: 100%;
         z-index: 30;
         color: #fff;
         .first-left,
         .first-right {
-          padding-top: 10%;
-          // width: 50%;
           display: inline-block;
           text-align: center;
         }
         .first-left {
-          padding-right: 40px;
-
+          padding-right: 80px;
           box-sizing: border-box;
-          // margin-right: -80px;
         }
         .first-right {
-          padding-left: 40px;
-
+          padding-left: 80px;
           box-sizing: border-box;
-          // margin-left: 80px;
         }
       }
     }
@@ -167,6 +161,7 @@ export default {
     transition: opacity 0.3s;
     img {
       width: 16px;
+      height: auto;
       vertical-align: middle;
       transform: rotate(90deg);
       -ms-transform: rotate(90deg); /* Internet Explorer */

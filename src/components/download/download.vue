@@ -1,8 +1,8 @@
 <template>
   <div class="download">
     <div class="download-l">
-      <img src="../../assets/banner/butler.png" v-show="!currentIndex">
-      <img src="../../assets/banner/butler1.png" v-show="currentIndex">
+      <img src="../../assets/banner/butler.png" v-show="currentIndex">
+      <img src="../../assets/banner/butler1.png" v-show="!currentIndex">
     </div>
     <div class="download-r">
       <div v-for="item in select" class="item" @click="selectOne(item)">
@@ -82,13 +82,13 @@ export default {
       box-sizing: border-box;
       padding-left: 45px;
       line-height: 62px;
-      text-align: start;
+      text-align: left;
       .icon {
         display: inline-block;
         margin-right: 10px;
         width: 32px;
         height: 36px;
-        vertical-align: sub;
+        vertical-align: middle;
       }
       .icon::before {
         content: '';
@@ -105,6 +105,7 @@ export default {
         background-size: contain;
       }
       .text {
+        vertical-align: middle;
         font-size: 25px;
       }
     }

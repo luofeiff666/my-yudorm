@@ -25,9 +25,10 @@
 </template>
 
 <script type="text/ecmascript-6">
-import BScroll from 'better-scroll'
-import { addClass } from '../../common/js/dom'
+// 添加class 以及自动添加前缀
+import { addClass, prefixStyle } from '../../common/js/dom'
 
+const transform = prefixStyle('transform')
 export default {
   // 轮播属性设置 的外部接口
   data() {
@@ -36,7 +37,8 @@ export default {
       // 表示当前是第几页 默认0
       currentPageIndex: 0,
       // 悬停标志位
-      mouseover: false
+      mouseover: false,
+      clickReady: true
     }
   },
   props: {
@@ -73,14 +75,10 @@ export default {
     }, 20)
     // 当resize事件触发时 重新获取设置宽度
     window.addEventListener('resize', () => {
-      // 如果slider还没有初始化的时候 那么 return
-      if (!this.slider) {
-        return
-      }
       // 问题:这里重新设置    width += 2 * sliderWidth不能再这里再次设置所以要设置一个Boolon- isResize 去判断
+      this.resizeReady = false
       this._setSliderWidth(true)
       // BScroll的一个refresh API 当宽度发生变化重新refresh重新计算
-      this.slider.refresh()
     })
     // 悬停停止自动轮播
     this.$refs.slider.addEventListener('mouseover', () => {
@@ -115,6 +113,12 @@ export default {
         width += 2 * sliderWidth
       }
       this.$refs.sliderGroup.style.width = width + 'px'
+      // 获得图的宽度
+      this.childrenWidth = sliderWidth
+      // 使得轮播图在改变尺寸时一直保持当前位置
+      this.$refs.sliderGroup.style.left = `${-sliderWidth *
+        (this.currentPageIndex + 1)}px`
+      this.$refs.sliderGroup.style.transition = `left ${0}ms`
     },
     _initDots() {
       // 导航个数
@@ -122,33 +126,14 @@ export default {
     },
     // 初始化轮播
     _initSlider() {
-      this.slider = new BScroll(this.$refs.slider, {
-        // 允许X轴滚动
-        scrollX: true,
-        // 不允许Y轴动
-        scrollY: false,
-        momentum: false,
-        snap: true,
-        snapLoop: this.loop,
-        snapThreshold: 0.3,
-        // 滑动动画速度
-        snapSpeed: 400
-        // 这个在移动端会阻止转跳默认事件click 不设置
-        // click: true
-      })
-      // 滑动图片时提供
-      // 内置的scrollEnd 滚动完毕触发
-      this.slider.on('scrollEnd', () => {
-        let pageIndex = this.slider.getCurrentPage().pageX
-        // 做一个判断
-        if (this.loop) {
-          // 默认配置的时候是+1 这里当滚动的时候 要-1
-          pageIndex -= 1
-        }
-        this.currentPageIndex = pageIndex
-        // 每次轮播前 清除前面的定时器
-        this.clearTime()
-      })
+      this.children = this.$refs.sliderGroup.children
+      let len = this.children.length
+      let clnFirst = this.children[0].cloneNode(true)
+      let clnLast = this.children[len - 1].cloneNode(true)
+      // 把第一个复制一份到最后
+      this.$refs.sliderGroup.appendChild(clnFirst)
+      //把最后一个复制一份到第一
+      this.$refs.sliderGroup.insertBefore(clnLast, this.children[0])
     },
     _play() {
       this.timer = setTimeout(() => {
@@ -167,52 +152,83 @@ export default {
     },
     // 上翻
     prevtPage() {
-      let pageIndex = this.slider.getCurrentPage().pageX
-      // 做一个判断
-      if (this.loop) {
-        // 默认配置的时候是+1 这里当滚动的时候 要-1
-        pageIndex -= 1
+      if (!this.clickReady) return
+      this.currentPageIndex--
+      // 获得图的宽度
+      if (this.currentPageIndex <= -1) {
+        this.currentPageIndex = 4
       }
-      if (pageIndex <= 0) {
-        this.currentPageIndex = this.children.length - 3
-      } else {
-        this.currentPageIndex = pageIndex - 1
-      }
-      this.slider.goToPage(pageIndex, 0, this.speed)
+      let index = this.currentPageIndex
+      let prevtPage = true
+      this.animation(index, prevtPage)
       //  清除前面的定时器
       this.clearTime()
+      this.clickReady = false
+      let timer = setTimeout(() => {
+        this.clickReady = true
+      }, this.speed)
+      // clearTimeout(timer)
     },
     // 下翻
     nextPage() {
+      if (!this.clickReady) return
       // 清除前面的定时器
       this.clearTime()
-      let pageIndex = this.slider.getCurrentPage().pageX
-      // 做一个判断
-      if (this.loop) {
-        // 默认配置的时候是+1 这里当滚动的时候 要-1
-        pageIndex += 1
-      }
-      if (pageIndex === this.children.length - 1) {
+      this.currentPageIndex++
+      // 获得图的宽度
+      let len = this.children.length - 2
+      if (this.currentPageIndex === len) {
         this.currentPageIndex = 0
-      } else {
-        this.currentPageIndex = pageIndex - 1
       }
-      this.slider.goToPage(pageIndex, 0, this.speed)
+      let index = this.currentPageIndex
+      let nextPage = false
+      this.animation(index, nextPage)
+      this.clickReady = false
+      let timer = setTimeout(() => {
+        this.clickReady = true
+      }, this.speed)
+      // clearTimeout(timer)
     },
     // 转跳指定
     clickToPage(index) {
-      let pageIndex = index + 1
       this.currentPageIndex = index
-      this.slider.goToPage(pageIndex, 0, this.speed)
+      this.animation(index)
       // 每次轮播前 清除前面的定时器
       this.clearTime()
+    },
+    animation(index, bl) {
+      // transition: left 0.4s;
+      let width = this.childrenWidth
+      width = width * (index + 1)
+      // 并且判断上还是下
+      if (index === 0 && !bl) {
+        width = width * 6
+        this.$refs.sliderGroup.style.left = `${-width}px`
+        this.$refs.sliderGroup.style.transition = `left ${this.speed}ms`
+        clearTimeout(timer)
+        let timer = setTimeout(() => {
+          this.$refs.sliderGroup.style.left = `${-this.childrenWidth}px`
+          this.$refs.sliderGroup.style.transition = `left ${0}ms`
+        }, this.speed)
+        // 并且判断上还是下
+      } else if (index === 4 && bl) {
+        this.$refs.sliderGroup.style.left = `${0}px`
+        this.$refs.sliderGroup.style.transition = `left ${this.speed}ms`
+        clearTimeout(timer)
+        let timer = setTimeout(() => {
+          this.$refs.sliderGroup.style.left = `${-this.childrenWidth * 5}px`
+          this.$refs.sliderGroup.style.transition = `left ${0}ms`
+        }, this.speed)
+      } else {
+        this.$refs.sliderGroup.style.left = `${-width}px`
+        this.$refs.sliderGroup.style.transition = `left ${this.speed}ms`
+      }
     }
   },
   // 组件销毁时清除循环 清除内存
   destroyed() {
     clearTimeout(this.timer)
-  },
-  components: {}
+  }
 }
 </script>
 
@@ -222,8 +238,7 @@ export default {
 
   .mark-left,
   .mark-right {
-    display: flex;
-    align-items: center;
+    z-index: 100;
     height: 100%;
     width: 10%;
     opacity: 0.5;
@@ -242,6 +257,8 @@ export default {
     img {
       position: absolute;
       left: 10%;
+      top: 50%;
+      transform: translateY(-50%);
     }
   }
   .mark-right {
@@ -250,14 +267,15 @@ export default {
     right: 0;
 
     img {
-      display: block;
-      transform: rotate(180deg);
-      -ms-transform: rotate(180deg); /* Internet Explorer */
-      -moz-transform: rotate(180deg); /* Firefox */
-      -webkit-transform: rotate(180deg); /* Safari 和 Chrome */
-      -o-transform: rotate(180deg); /* Opera */
       position: absolute;
+      top: 50%;
       right: 10%;
+      // -webkit-transform: translateY(50%);
+      transform: rotate(180deg) translateY(50%);
+      -ms-transform: rotate(180deg) translateY(50%); /* Internet Explorer */
+      -moz-transform: rotate(180deg) translateY(50%); /* Firefox */
+      -webkit-transform: rotate(180deg) translateY(50%); /* Safari 和 Chrome */
+      -o-transform: rotate(180deg) translateY(50%); /* Opera */
     }
   }
   // 左右导航按钮 hover
@@ -300,8 +318,11 @@ export default {
   }
   .slider-group {
     position: relative;
+    left: 0;
+    top: 0;
     white-space: nowrap;
     overflow: hidden;
+
     .slider-item {
       float: left;
       box-sizing: border-box;
@@ -331,10 +352,10 @@ export default {
     .dot {
       display: inline-block;
       margin: 0 4px;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #fff;
+      width: 20px;
+      height: 5px;
+      border-radius: 5px;
+      background: #eee;
       &.active {
         border-radius: 5px;
         // width: 20px;

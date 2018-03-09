@@ -195,7 +195,7 @@ export default {
         color: #b172ff;
       }
       .title {
-        font-size: 40px;
+        font-size: 35px;
         color: #333;
       }
       .text {
